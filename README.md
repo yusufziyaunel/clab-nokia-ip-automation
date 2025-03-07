@@ -38,7 +38,7 @@ This tool simplifies the process of deploying network topologies with ContainerL
 1. Clone this repository:
 <pre>
 git clone https://github.com/network-automation/clab-nokia-ip-automation.git
-cd clab-ansible-automation
+cd clab-nokia-ip-automation.py
 </pre>
 
 3. Install required Python packages:
