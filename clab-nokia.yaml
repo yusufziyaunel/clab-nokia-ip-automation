@@ -1,0 +1,40 @@
+---
+name: sr7-lab
+
+mgmt:
+  network: my-mgmt
+  ipv4-subnet: 172.100.100.0/24
+
+topology:
+  defaults:
+    kind: nokia_sros
+    image: vrnetlab/nokia_sros:23.10.R7 ### Nokia SROS Image created with vrnetlab
+    license: licenses/license-sros23.txt ### Nokia SROS License
+    type: >-
+      cp: cpu=2 min_ram=4 chassis=sr-7 slot=A card=cpm5 ___
+      lc: cpu=4 min_ram=4 max_nics=6 chassis=sr-7 slot=1 card=iom4-e mda/1=me6-10gb-sfp+
+  nodes:
+    sr1:
+      mgmt-ipv4: 172.100.100.101
+    sr2:
+      mgmt-ipv4: 172.100.100.102
+    sr3:
+      mgmt-ipv4: 172.100.100.103
+    sr4:
+      mgmt-ipv4: 172.100.100.104
+
+  links:
+    - endpoints: [sr1:eth1, sr2:eth1]
+      vars:
+        isis: true
+    - endpoints: [sr2:eth2, sr3:eth2]
+      vars:
+        isis: true
+    - endpoints: [sr3:eth1, sr4:eth1]
+      vars:
+        isis: true
+    - endpoints: [sr4:eth2, sr1:eth2]
+      vars:
+        ebgp: true
+        as_number: 65502
+        peer_as: 65501
