@@ -55,7 +55,7 @@ chmod +x clab-nokia-ip-automation.py
 ## Usage
 Run the script with:
 <pre>
-./clab_ansible_automation.py [topology_file.yaml]
+./clab-nokia-ip-automation.py [topology_file.yaml]
 </pre>
 If you don't specify a topology file, the script will list available YAML files in the current directory.
 
