@@ -66,3 +66,7 @@ The script deploys the topology with ContainerLab
 The script updates the Ansible inventory with link information
 The script waits for all containers to become ready
 When all containers are ready, the script runs the Ansible playbook
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
