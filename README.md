@@ -20,18 +20,13 @@ This tool simplifies the process of deploying network topologies with ContainerL
 
 ## Requirements
 
-- Python 3.6+
-- ContainerLab
-- Ansible
-- Docker
-- PyYAML (`pip install pyyaml`)
   * [Python 3.6+](https://www.python.org/downloads/)
   * [ContainerLab](https://containerlab.dev/)
   * [Ansible](https://docs.ansible.com/)
   * [Docker](https://www.docker.com/)
-  * [PyYaml](`pip install pyyaml`)
-  * [Nokia SROS VSIM Images](`Direct Contact with Nokia`)
-  * [Nokia SROS License](`Direct Contact with Nokia`)
+  * PyYaml(`pip install pyyaml`)
+  * Nokia SROS VSIM Images(`Direct Contact with Nokia`)
+  * Nokia SROS License(`Direct Contact with Nokia`)
 
 ## Installation
 
