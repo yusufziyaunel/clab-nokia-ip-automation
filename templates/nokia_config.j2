@@ -1,0 +1,86 @@
+# templates/nokia_config.j2
+/configure system name {{ inventory_hostname.split('-')[-1] }}
+/configure card 1 card-type iom4-e
+/configure card 1 mda 1 mda-type me6-10gb-sfp+
+/configure sfm 1 sfm-type m-sfm5-7
+/configure router interface "system" address {{ system_ip }}
+{% for loopback in router_loopbacks %}
+/configure router interface "loopback{{ loop.index }}" address {{ loopback }}
+/configure router interface "loopback{{ loop.index }}" loopback
+{% endfor %}
+{% if interface_configs | selectattr('isis', 'defined') | selectattr('isis') | list | length > 0 %}
+/configure router isis 0
+/configure router isis 0 level-capability level-{{ isis_level }}
+/configure router isis 0 area-id {{ isis_area }}
+/configure router isis 0 interface "system"
+/configure router isis 0 interface "system" interface-type point-to-point
+/configure router isis 0 interface "system" no shutdown
+/configure router isis 0 no shutdown
+{% endif %}
+{% for interface in interface_configs %}
+/configure port {{ interface.port }} no shutdown
+/configure router interface "to-{{ interface.peer }}" address {{ interface.ip }}
+/configure router interface "to-{{ interface.peer }}" port {{ interface.port }}
+/configure router interface "to-{{ interface.peer }}" no shutdown
+{% if interface.isis and not interface.ebgp %}
+/configure router isis 0 interface "to-{{ interface.peer }}" interface-type point-to-point
+/configure router isis 0 interface "to-{{ interface.peer }}" no shutdown
+{% endif %}
+{% endfor %}
+{% set isis_interfaces = interface_configs | selectattr('isis', 'defined') | selectattr('isis') | list %}
+{% if isis_interfaces | length > 0 %}
+/configure router mpls no shutdown
+{% for interface in isis_interfaces %}
+/configure router mpls interface "to-{{ interface.peer }}" no shutdown
+{% endfor %}
+/configure router mpls interface "system" no shutdown
+{% for interface in isis_interfaces %}
+/configure router rsvp interface "to-{{ interface.peer }}" no shutdown
+{% endfor %}
+/configure router rsvp interface "system" no shutdown
+/configure router rsvp no shutdown
+/configure router ldp
+/configure router ldp interface-parameters
+{% for interface in isis_interfaces %}
+/configure router ldp interface-parameters interface "to-{{ interface.peer }}"
+{% endfor %}
+/configure router ldp no shutdown
+{% endif %}
+
+{# BGP konfigürasyonu #}
+{% set ebgp_interfaces = interface_configs | selectattr('ebgp', 'defined') | selectattr('ebgp') | list %}
+{% set ebgp_link = links | selectattr('vars.ebgp', 'defined') | selectattr('vars.ebgp') | first %}
+{% if ebgp_interfaces | length > 0 %}
+
+{# Default AS numaraları için #}
+{% set default_first_as = 65500 %}
+{% set default_second_as = 65501 %}
+
+{# İlk router için #}
+{% if inventory_hostname == "clab-sr7-lab-" + ebgp_link.endpoints[0].split(':')[0] %}
+/configure router autonomous-system {{ ebgp_link.vars.as_number | default(default_first_as) }}
+/configure router bgp
+/configure router bgp group "EBGP-PEERS"
+{% for interface in ebgp_interfaces %}
+/configure router bgp group "EBGP-PEERS" neighbor {{ interface.peer_ip }}
+/configure router bgp group "EBGP-PEERS" peer-as {{ ebgp_link.vars.peer_as | default(default_second_as) }}
+{% endfor %}
+
+{# İkinci router için #}
+{% elif inventory_hostname == "clab-sr7-lab-" + ebgp_link.endpoints[1].split(':')[0] %}
+/configure router autonomous-system {{ ebgp_link.vars.peer_as | default(default_second_as) }}
+/configure router bgp
+/configure router bgp group "EBGP-PEERS"
+{% for interface in ebgp_interfaces %}
+/configure router bgp group "EBGP-PEERS" neighbor {{ interface.peer_ip }}
+/configure router bgp group "EBGP-PEERS" peer-as {{ ebgp_link.vars.as_number | default(default_first_as) }}
+{% endfor %}
+{% endif %}
+
+/configure router bgp group "EBGP-PEERS" family ipv4
+/configure router bgp group "EBGP-PEERS" export direct
+/configure router bgp group "EBGP-PEERS" export bgp
+/configure router bgp no shutdown
+{% endif %}
+
+/admin save
