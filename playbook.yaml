@@ -1,0 +1,64 @@
+# playbook.yml
+---
+- name: Configure Nokia Basics
+  hosts: all
+  gather_facts: no
+  vars:
+    # Common variables
+    chassis: "sr-7"
+    bgp_asn: 65500
+    isis_area: 49.0001
+    isis_level: 2
+  tasks:
+    # Mixed-mode configuration as a single task
+    - name: Configure mixed-mode
+      ansible.netcommon.cli_command:
+        command: "{{ item }}"
+      loop:
+        - "edit-config global"
+        - "configure system management-interface configuration-mode mixed"
+        - "commit"
+        - "//"
+      ignore_errors: yes
+
+    - name: Extract Router ID from hostname
+      set_fact:
+        router_id: "{{ inventory_hostname | regex_search('sr(\\d+)', '\\1') | first }}"
+        current_node: "{{ inventory_hostname.split('-')[-1] }}"
+
+    - name: Set Router Variables
+      set_fact:
+        system_ip: "20.1.1.{{ router_id }}/32"
+        router_loopbacks:
+          - "192.168.{{ router_id }}.9/29"
+          - "192.168.{{ router_id }}.25/29"
+
+    - name: Set Interface Facts
+      set_fact:
+        interface_configs: "{{ [] }}"
+
+    - name: Process Links for Current Node
+      set_fact:
+        interface_configs: "{{ interface_configs + [config_item] }}"
+      vars:
+        current_router_num: "{{ current_node | regex_search('\\d+') | first | int }}"
+        peer_router_num: "{{ (item.endpoints[1] if current_node in item.endpoints[0] else item.endpoints[0]).split(':')[0] | regex_search('\\d+') | first | int }}"
+        first_router: "{{ [current_router_num, peer_router_num] | min }}"
+        second_router: "{{ [current_router_num, peer_router_num] | max }}"
+        my_ip: "{{ '10.' + first_router|string + '.' + second_router|string + '.' + current_router_num|string }}"
+        peer_ip: "{{ '10.' + first_router|string + '.' + second_router|string + '.' + peer_router_num|string }}"
+        config_item:
+          port: "{{ item.vars.port[0] if current_node in item.endpoints[0] else item.vars.port[1] }}"
+          ip: "{{ my_ip + '/27' }}"
+          peer_ip: "{{ peer_ip }}"
+          peer: "{{ item.endpoints[1].split(':')[0] if current_node in item.endpoints[0] else item.endpoints[0].split(':')[0] }}"
+          isis: "{{ item.vars.isis | default(false) }}"
+          ebgp: "{{ item.vars.ebgp | default(false) }}"
+          vars:
+            peer_as: "{{ item.vars.peer_as | default(omit) }}"
+      when: current_node in item.endpoints[0] or current_node in item.endpoints[1]
+      loop: "{{ links }}"
+
+    - name: Apply configuration
+      community.network.sros_command:
+        commands: "{{ lookup('template', 'templates/nokia_config.j2').split('\n') | select('ne', '') | list }}"
